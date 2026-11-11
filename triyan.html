@@ -222,4 +222,67 @@
       }
     }
 
-    async
+    async function simpanGuru(e) {
+      e.preventDefault();
+      const { error } = await db.from("guru").insert([{
+        nip: document.getElementById("nip").value,
+        nama: document.getElementById("namaGuru").value,
+        mapel: document.getElementById("mapel").value
+      }]);
+
+      if (error) alert("Gagal: " + error.message);
+      else {
+        alert("Berhasil menambah guru!");
+        tutupModal();
+        muatData();
+      }
+    }
+
+    function tampilkanData() {
+      const kataKunci = document.getElementById("cari").value.toLowerCase();
+      const hasil = semuaData.filter(s => 
+        s.nama.toLowerCase().includes(kataKunci) || (s.nis && s.nis.includes(kataKunci)) || (s.nip && s.nip.includes(kataKunci))
+      );
+
+      document.getElementById("jumlah").textContent = hasil.length + " data ditemukan";
+      const elDaftar = document.getElementById("daftar");
+      elDaftar.replaceChildren();
+
+      if (hasil.length === 0) {
+        elDaftar.innerHTML = '<p class="pesan">Tidak ada data ditemukan.</p>';
+        return;
+      }
+
+      hasil.forEach(s => {
+        const kartu = document.createElement("article");
+        kartu.className = "kartu";
+        kartu.style.setProperty("--hue", warnaHash(s.nama));
+
+        kartu.innerHTML = `
+          <div class="pita"></div>
+          <div class="isi">
+            <div class="foto">${s.nama.charAt(0).toUpperCase()}</div>
+            <h2 class="nama">${s.nama}</h2>
+            <p class="nis">${s.tipe === 'Siswa' ? 'NIS ' + s.nis : 'NIP ' + s.nip}</p>
+            <dl class="rincian">
+              <div><dt>Status</dt><dd><strong>${s.tipe}</strong></dd></div>
+              <div><dt>${s.tipe === 'Siswa' ? 'Kelas' : 'Mapel'}</dt><dd>${s.tipe === 'Siswa' ? s.kelas : s.mapel}</dd></div>
+              ${s.tipe === 'Siswa' ? `<div><dt>Kelamin</dt><dd>${s.jenis_kelamin}</dd></div>` : ''}
+            </dl>
+          </div>
+        `;
+        elDaftar.appendChild(kartu);
+      });
+    }
+
+    function warnaHash(teks) {
+      let total = 0;
+      for (let i = 0; i < teks.length; i++) total += teks.charCodeAt(i);
+      return (total * 47) % 360;
+    }
+
+    document.getElementById("cari").addEventListener("input", tampilkanData);
+    muatData();
+  </script>
+</body>
+</html>
