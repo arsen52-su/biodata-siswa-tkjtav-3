@@ -39,6 +39,26 @@
     header h1 { margin: 0 0 4px; font-size: 1.75rem; font-weight: 800; }
     header p  { margin: 0; color: var(--teks-redup); }
     
+    /* Style Form Tambah Siswa */
+    .form-box {
+      background: var(--kartu);
+      border: 1px solid var(--garis);
+      border-radius: 14px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .form-box h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .form-box input, .form-box select {
+      font: inherit; color: var(--teks); background: var(--bg);
+      border: 1px solid var(--garis); border-radius: 8px; padding: 10px; width: 100%;
+    }
+    .form-box button {
+      grid-column: 1 / -1; background: var(--aksen); color: #fff; border: none;
+      padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;
+    }
+    .form-box button:hover { opacity: 0.9; }
+
     .kontrol { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 8px; }
     .kontrol input, .kontrol select {
       font: inherit;
@@ -50,10 +70,6 @@
     }
     .kontrol input  { flex: 1 1 220px; }
     .kontrol select { flex: 0 1 160px; }
-    .kontrol input:focus-visible, .kontrol select:focus-visible {
-      outline: 2px solid var(--aksen);
-      outline-offset: 1px;
-    }
     .jumlah { color: var(--teks-redup); font-size: 0.9rem; margin: 0 0 16px; }
     
     .daftar {
@@ -98,15 +114,31 @@
       color: var(--teks-redup);
     }
     .pesan.galat { color: #b42318; }
-    @media (prefers-color-scheme: dark) { .pesan.galat { color: #ff8b80; } }
   </style>
 </head>
 <body>
   <div class="wadah">
     <header>
       <h1>Biodata Siswa</h1>
-      <p>Cari siswa berdasarkan nama atau NIS.</p>
+      <p>Cari atau tambahkan data siswa langsung dari sini.</p>
     </header>
+
+    <!-- FORM TAMBAH SISWA -->
+    <div class="form-box">
+      <h3>➕ Tambah Siswa Baru</h3>
+      <form id="formSiswa" class="form-grid" onsubmit="tambahSiswa(event)">
+        <input type="text" id="inputNis" placeholder="Nomor Induk Siswa (NIS)" required>
+        <input type="text" id="inputNama" placeholder="Nama Lengkap" required>
+        <input type="text" id="inputKelas" placeholder="Kelas (Contoh: TKJ)" required>
+        <select id="inputJK" required>
+          <option value="Laki-laki">Laki-laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+        <input type="text" id="inputFoto" placeholder="URL Foto (Opsional)">
+        <button type="submit">Simpan ke Database</button>
+      </form>
+    </div>
+
     <div class="kontrol">
       <input id="cari" type="search" placeholder="Cari nama atau NIS" aria-label="Cari nama atau NIS">
       <select id="filterKelas" aria-label="Filter kelas">
@@ -120,9 +152,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   
   <script>
-    // ---------- LANGKAH 1: PENGATURAN SUPABASE ----------
-    const SUPABASE_URL = "https://ssjelbwucvvmqlkjijnn.supabase.co"; // Ganti dengan URL Project Anda
-    const SUPABASE_ANON_KEY = "sb_publishable_YJbBWOWvA7mBowt8Vt3Tiw_qo4WpCO4"; // Ganti dengan anon key Anda
+    const SUPABASE_URL = "https://ssjelbwucvvmqlkjijnn.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_YJbBWOWvA7mBowt8Vt3Tiw_qo4WpCO4";
 
     const TAMPILKAN = {
       jenisKelamin: true,
@@ -148,12 +179,34 @@
       
       if (error) {
         console.error(error);
-        tampilkanPesan("Data tidak bisa dimuat. Periksa URL dan anon key di Supabase.", true);
+        tampilkanPesan("Data tidak bisa dimuat. Periksa koneksi Supabase.", true);
         return;
       }
-      semuaSiswa = data;
+      semuaSiswa = data || [];
       isiPilihanKelas();
       tampilkanSiswa();
+    }
+
+    // Fungsi untuk nambahin data siswa langsung ke Supabase
+    async function tambahSiswa(e) {
+      e.preventDefault();
+      const nis = document.getElementById("inputNis").value.trim();
+      const nama = document.getElementById("inputNama").value.trim();
+      const kelas = document.getElementById("inputKelas").value.trim();
+      const jenis_kelamin = document.getElementById("inputJK").value;
+      const foto_url = document.getElementById("inputFoto").value.trim();
+
+      const { error } = await db.from("siswa").insert([
+        { nis, nama, kelas, jenis_kelamin, foto_url: foto_url || null }
+      ]);
+
+      if (error) {
+        alert("Gagal menyimpan: " + error.message);
+      } else {
+        alert("Berhasil menambahkan siswa!");
+        document.getElementById("formSiswa").reset();
+        muatData(); // Refresh otomatis kartu di bawahnya
+      }
     }
 
     function tampilkanSiswa() {
@@ -170,7 +223,7 @@
       elDaftar.replaceChildren();
 
       if (hasil.length === 0) {
-        tampilkanPesan(semuaSiswa.length === 0 ? "Belum ada data siswa. Tambahkan data lewat Table Editor di Supabase." : "Tidak ada siswa yang cocok.");
+        tampilkanPesan(semuaSiswa.length === 0 ? "Belum ada data siswa." : "Tidak ada siswa yang cocok.");
         return;
       }
       hasil.forEach((s) => elDaftar.appendChild(buatKartu(s)));
@@ -260,6 +313,7 @@
 
     function isiPilihanKelas() {
       const daftarKelas = [...new Set(semuaSiswa.map((s) => s.kelas).filter(Boolean))].sort();
+      elKelas.innerHTML = '<option value="">Semua kelas</option>';
       daftarKelas.forEach((k) => {
         const opsi = document.createElement("option");
         opsi.value = k;
